@@ -25,9 +25,9 @@ void print_road(vector<vector<long>> &rows){
     cout << endl;
 }
 
-int easy(vector<string> &rows){
+long easy(vector<string> &rows){
 
-    unsigned long long result = 0;
+    long result = 0;
     vector<pair<int,int>> beams;
 
     for(int j=0; j<rows[0].size(); ++j){
@@ -61,8 +61,10 @@ int easy(vector<string> &rows){
                 result++;
             }
         }
-        print(rows);
+        //print(rows);
     }
+
+    cout << "Result easy: " << result << endl;
 
     // End of easy
 
@@ -106,7 +108,7 @@ int easy(vector<string> &rows){
         road.clear();
     }
 
-    print_road(roads);
+    //print_road(roads);
     return result;
 }
 
@@ -116,13 +118,13 @@ int main()
     vector<string> rows;
     string text;
     input.open("07.txt");
-    int answer = 0;
+    long answer = 0;
     while (getline(input, text))
     {
         rows.push_back(text);
     }
     answer = easy(rows);
-    cout << answer << endl;
+    cout << "Result hard: "<< answer << endl;
     input.close();
     return 0;
 }
