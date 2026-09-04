@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <set>
 
 using namespace std;
 
@@ -12,10 +13,21 @@ double distance(double a1, double a2, double b1, double b2, double c1, double c2
 
 struct Point{
     int X, Y, Z;
+
 };
 
-int easy(vector<string> &rows){
+struct Distance{
+    double dist;
+    Point p1, p2;
+    bool operator < (const Distance& d) const{
+        return dist < d.dist;
+    }
+};
+
+
+long long easy(vector<string> &rows){
     
+    // pontok beolvasása
     vector<Point> points;
     for(int i=0; i<rows.size(); ++i){
         vector<int> numbers;
@@ -38,102 +50,148 @@ int easy(vector<string> &rows){
         numbers.clear();
     }
 
-    vector<vector<double>> dists;
+    set<Distance> uniqueDistances;
     for(int i = 0; i < points.size()-1; ++i){
-        vector<double> pointdist;
         for(int j = i+1; j < points.size(); ++j){
-            pointdist.push_back(distance(points[i].X,points[j].X,
-                                         points[i].Y,points[j].Y,
-                                         points[i].Z,points[j].Z));
+            Distance d;
+            d.dist = distance(points[i].X,points[j].X,
+                              points[i].Y,points[j].Y,
+                              points[i].Z,points[j].Z);
+            d.p1 = points[i];
+            d.p2 = points[j];
+            uniqueDistances.insert(d);
         }
-        dists.push_back(pointdist);
     }
 
+    vector<Point> unchecked_points;
+    for(int i = 0; i < points.size(); ++i){
+        unchecked_points.push_back(points[i]);
+    }
+    vector<Point> unique_circuit;
     vector<vector<Point>> circuits;
+    int connections = 0;
+    int counter = 0;
 
-    for(int q = 0; q<1000; ++q){
-        //find
-        double min = 999999;
-        int mini, minj;
-        for(int i = 0; i < dists.size(); ++i){
-            for(int j = 0; j < dists[i].size(); ++j){
-                if(dists[i][j] < min){
-                    min = dists[i][j];
-                    mini = i;
-                    minj = j;
-                    //dists[i][j] = 9999999;
+    int last_p1_X, last_p2_X;
+    
+    while(unchecked_points.size() > 0 || circuits.size() != 1 /*&& counter < 10*/){
+
+
+        Distance d = *uniqueDistances.begin();
+        last_p1_X = d.p1.X;
+        last_p2_X = d.p2.X;
+
+        /*
+        cout << "Smallest distance: " << d.dist << " between points (" 
+             << d.p1.X << "," << d.p1.Y << "," << d.p1.Z << ") and ("
+             << d.p2.X << "," << d.p2.Y << "," << d.p2.Z << ")" << endl;
+        */
+
+        bool foundp1 = false;
+        bool foundp2 = false;
+        int foundp1_circuit = -1;
+        int foundp2_circuit = -1;
+        for(int i = 0; i < circuits.size(); ++i){
+            
+            for(int j = 0; j < circuits[i].size(); ++j){
+                if(circuits[i][j].X == d.p1.X && circuits[i][j].Y == d.p1.Y && circuits[i][j].Z == d.p1.Z){
+                    foundp1 = true;
+                    foundp1_circuit = i;
+                }
+                if(circuits[i][j].X == d.p2.X && circuits[i][j].Y == d.p2.Y && circuits[i][j].Z == d.p2.Z){
+                    foundp2 = true;
+                    foundp2_circuit = i;
                 }
             }
+            
         }
-        dists[mini][minj] = 9999999;
+        if(foundp1 && !foundp2){
+            circuits[foundp1_circuit].push_back(d.p2);
+            connections++;
+        } else if(!foundp1 && foundp2){
+            circuits[foundp2_circuit].push_back(d.p1);
+            connections++;
+        } 
+        else if(foundp1 && foundp2 && foundp1_circuit != foundp2_circuit){
+            circuits[foundp1_circuit].insert(circuits[foundp1_circuit].end(), circuits[foundp2_circuit].begin(), circuits[foundp2_circuit].end());
+            circuits.erase(circuits.begin() + foundp2_circuit);
+            connections++;
+        }
+        else if(!foundp1 && !foundp2){
+            vector<Point> new_circuit;
+            new_circuit.push_back(d.p1);
+            new_circuit.push_back(d.p2);
+            circuits.push_back(new_circuit);
+            connections++;
+        }
 
-        Point p1 = points[mini];
-        Point p2 = points[mini + minj + 1];
+        for(int i = 0; i < unchecked_points.size(); ++i){
+            if((unchecked_points[i].X == d.p1.X && unchecked_points[i].Y == d.p1.Y && unchecked_points[i].Z == d.p1.Z) ||
+               (unchecked_points[i].X == d.p2.X && unchecked_points[i].Y == d.p2.Y && unchecked_points[i].Z == d.p2.Z)){
+                unchecked_points.erase(unchecked_points.begin() + i);
+                --i;
+            }
+        }
 
-        
-        int foundp1 = -1;
-        int foundp2 = -1;
-        for(int i=0; i<circuits.size(); ++i){
+        /*
+        for(int i = 0; i < circuits.size(); ++i){
+            cout << "Circuit " << i << ": ";
             for(int j = 0; j < circuits[i].size(); ++j){
-                if(p1.X == circuits[i][j].X &&
-                p1.Y == circuits[i][j].Y &&
-                p1.Z == circuits[i][j].Z ){
-                    foundp1 = i;
-                } 
-                if(p2.X == circuits[i][j].X &&
-                p2.Y == circuits[i][j].Y &&
-                p2.Z == circuits[i][j].Z ){
-                    foundp2 = i;
-                } 
+                cout << "(" << circuits[i][j].X << "," << circuits[i][j].Y << "," << circuits[i][j].Z << ") ";
             }
-        }
-
-        if(foundp1 != -1 && foundp2 != -1 && foundp1 != foundp2){
-            for(int a = 0; a<circuits[foundp2].size(); ++a){
-                circuits[foundp1].push_back(circuits[foundp2][a]);
-                
-            }
-            circuits.erase(circuits.begin() + foundp2);
-            //circuits[foundp1].push_back(p1);
-            //circuits[foundp1].push_back(p2);
-            int foundp1 = -1;
-            int foundp2 = -1;
-        } else
-        if(foundp1 == -1 && foundp2 == -1){
-            vector<Point> circuit;
-            circuit.push_back(p1);
-            circuit.push_back(p2);
-            circuits.push_back(circuit);
-        } else
-        if(foundp1 == -1 && foundp2 != -1){
-            circuits[foundp2].push_back(p1);
-            int foundp2 = -1;
-        } else
-        if(foundp1 != -1 && foundp2 == -1){
-            circuits[foundp1].push_back(p2);
-            int foundp1 = -1;
-        }
+            cout << endl;
         
+        }
+        cout << "Connections made: " << connections << endl;
+        cout << "Unchecked points remaining: " << unchecked_points.size() << endl;
+        cout << endl;
+
+        counter++;
+        */
+
+
+        uniqueDistances.erase(uniqueDistances.begin());
 
     }
 
+    /*
+    // For easy
     int result = 1;
-
-    
-    for(int a=0; a<3; ++a){
+    for(int i = 0; i < 3; ++i){
+       
         int maxsize = 0;
         int maxplace = -1;
-        for(int i=0; i<circuits.size(); i++){
-            if(circuits[i].size()>maxsize){
-                maxsize = circuits[i].size();
-                maxplace = i;
+        for(int j = 0; j < circuits.size(); ++j){
+            if(circuits[j].size() > maxsize){
+                maxsize = circuits[j].size();
+                maxplace = j;
             }
         }
-        result *= maxsize;
+        cout << "Circuit " << maxplace << " has size " << maxsize << endl;
+        if(maxplace != -1){
+            result *= maxsize;
+        }
         circuits.erase(circuits.begin() + maxplace);
-    }
 
-    return 0;
+    }
+        */
+
+        for(int i = 0; i < circuits.size(); ++i){
+            cout << "Circuit " << i << ": ";
+            for(int j = 0; j < circuits[i].size(); ++j){
+                cout << "(" << circuits[i][j].X << "," << circuits[i][j].Y << "," << circuits[i][j].Z << ") ";
+            }
+            cout << endl;
+        
+        }
+        cout << "Connections made: " << connections << endl;
+        cout << "Unchecked points remaining: " << unchecked_points.size() << endl;
+        cout << endl;
+
+        cout << "Unchecked distances remaining: " << uniqueDistances.size() << endl;
+        long long result = (long long)last_p1_X * last_p2_X;
+        cout << "Last points: (" << last_p1_X << "," << last_p2_X << ")" << endl;
+        return result;
 }
 
 int main()
@@ -141,14 +199,14 @@ int main()
     ifstream input;
     vector<string> rows;
     string text;
-    input.open("08_mini.txt");
-    int answer = 0;
+    input.open("08.txt");
+    long long answer = 0;
     while (getline(input, text))
     {
         rows.push_back(text);
     }
     answer = easy(rows);
-    cout << answer << endl;
+    cout << "Answer: " << answer << endl;
     input.close();
     return 0;
 }
